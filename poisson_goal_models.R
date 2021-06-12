@@ -43,7 +43,7 @@ get_home_poisson_win_prediction = function(home_attacking_xg,
                                    home_goals == away_goals ~ 'draw',
                                    home_goals < away_goals ~ 'away_win')) %>% 
     group_by(result_type) %>%
-    summarize(prob = sum(probability))
+    summarize(prob = sum(probability), .groups = 'drop')
 
   # Ensure that probabilities sum to 1
   home_prob = event_probabilities %>% filter(result_type == 'home_win') %>% select(prob) %>% unlist() %>% unname()
