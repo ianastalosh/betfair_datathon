@@ -1,2 +1,19 @@
 # betfair_datathon
-Models for prediction of 2021 Euro and Copa America matches
+This repo was created for participation in the (2021 Betfair Datathon)[https://www.betfair.com.au/hub/betfair-euro-copa-america-datathon/]. Data was provided by Betfair to predict all possible matches in the 2021 European Championships and Copa America.
+
+I worked on it for about a week at the start of June 2021. The repo is still a bit messy and if I have time to clean it up, I will. But, the workflow can be replicated as below:
+
+- Get the historical data from Betfair (they may not be hosting it anymore, so, if you're reading this at some point in the future, sorry about that)
+- Run `import_data.R`. This loads the data, and formats it from home/away format to team/opponent format. This makes modelling it slightly easier
+- Run `predict_xg.R`. The dataset had expected goals (XG) for each team from around the 2018 World Cup. It did contain match stats back to 2016, but not XG. So, this is a linear regression model to predict expected goals given the counting stats in each match (ie. shots, corners, etc.). I tried a log regression model as well but appeared to work best (like I said though, I didn't spend a lot of time on this so it could definitely be improved).
+- Run `rolling_functions.R`. For each team, I tried to build a metric quantifying their recent attacking and defensive form. This was done by using a rolling average of their expected goals (attacking XG) and expected goals of their opponent (defensive XG, how many chances they allow). I used an 8 week window as I felt this was long enough to capture the quality of a team but short enough to still capture recent form.
+- Run `poisson_goals_model.R`. Using the features above, build a Poisson model that predicts how many goals each team will score in a game. From this, we can write a function to derive the win, loss and draw probabilities for each match.
+- Run `xgboost_models.R`. Using the features from `rolling_functions.R`, train an XGBoost classification model to predict if the match will end in a win, loss or draw for the home team. From this, we create another function to derive the win, loss and draw probabilities for each match.
+- Run `xg_elo.R`. Here we build an ELO model to try and rank the teams, but instead of using the match result, use the XG for each team. (ie. if the final score is 3-1, but expected goals vs 1.2 v 1.5, it would be classified as a loss). This gives us a final team rating for each team. We also write a function to get the win, loss and draw probabilities using only these elo ratings and the relevant elo formulae. 
+- Run `submit_predictions.R`. This script takes in the Betfair template and makes predictions for each match, looking up the ratings and using the models we trained before. We ensemble the 3 methods of predicting probabilities defined in the three above scripts, and take a weighted average of their predictions. The final weights used was 25% Poisson, 25% XGBoost and 50% Elo. The reasoning for this is that the Poisson and XGBoost models were built using the same rolling features, while the Elo model uses XG, but not those 8 week rolling features.
+
+My predictions that I submitted are available in the `submissions` directory. They look somewhat reasonable, but I'm sure there are discrepancies that could have been ironed out with more time spent on the project. It really liked Spain, which I think is questionable, and it wasn't very high on France or Belgium which is a bit suspicious. It also really liked Austria, which I don't think is expected. 
+
+If I could improve one thing, it would be some sort of way to weight for team quality. Austria looked really good in the Elo because they played very poor teams in qualifying, and although they performed really well in those games, they probably don't deserve such a high rating. 
+
+Anyway, if you made it this far, thanks for reading. With more time I think I could have refined it a bit more, and at the time of writing this I don't know how the predictions played out, but if you did make it this far I hope there's at least one helpful thing in here :).
